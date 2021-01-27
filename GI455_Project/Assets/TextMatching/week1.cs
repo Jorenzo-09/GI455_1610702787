@@ -15,12 +15,12 @@ public class week1 : MonoBehaviour
         {
             if(textData.text == data[i])
             {              
-                textCheck.text = textData.text + "<color=green> is found </color> "; 
+                textCheck.text = "[ "+textData.text +" ]" + "<color=green> is found </color> "; 
                 return;
             }
             else if(textData.text != data[i])
             {
-                textCheck.text = textData.text + " <color=red> not found </color>";
+                textCheck.text = "[ "+textData.text +" ]"+ " <color=red> not found </color>";
             }
             
         }
