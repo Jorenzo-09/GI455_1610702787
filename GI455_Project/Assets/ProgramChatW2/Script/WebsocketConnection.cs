@@ -8,10 +8,33 @@ namespace ProgramChatW2
 {
     public class WebsocketConnection : MonoBehaviour
     {
+        struct MessageData
+        {
+            public string username;
+            public string message;
+
+            public MessageData(string username, string message)
+            {
+                this.username = username;
+                this.message = message;
+            }
+        }
+
+        struct SocketEvent
+        {
+            public string eventName; 
+            public string data; //data
+
+            public SocketEvent(string eventName,string data)
+            {
+                this.eventName = eventName;
+                this.data = data;
+            }
+        }
         private WebSocket websocket;
         public Text userText;
         public Text severText;
-        public Text massageText;
+        public InputField massageText;
         public Text ipCom;
         public Text portCom;
         public GameObject main1;
@@ -20,23 +43,27 @@ namespace ProgramChatW2
         public Text playerName;
         public Text checkWrong;
 
-        public GameObject createText;
-        public GameObject createText2;
-        public GameObject parent;
+        public InputField createRoom;
+        public InputField joinRoom;
+        
 
-        List<GameObject> saveMessage = new List<GameObject>();
-        List<GameObject> saveMessage0 = new List<GameObject>();
+        string saveDataText;
 
-        float y = 160;
+        public GameObject panelCreatFail;
+        public GameObject panelJoinFail;
+        public GameObject panelLobby;
+
+        //public GameObject createText;
+        //public GameObject createText2;
+        //public GameObject parent;
+
+
+        
 
         // Start is called before the first frame update
         void Start()
         {
-            websocket = new WebSocket("ws://127.0.0.1:25500/");
-
-            websocket.OnMessage += OnMessage;
-
-            websocket.Connect();
+            
 
             
         }
@@ -44,9 +71,66 @@ namespace ProgramChatW2
         // Update is called once per frame
         void Update()
         {
+            DataFormSever();
             playerName.text = inputName.text;
+        }
+
+
+
+        public void DataFormSever()
+        {
+            if (saveDataText != null && saveDataText != "")
+            {
+                SocketEvent receiveMessageData = JsonUtility.FromJson<SocketEvent>(saveDataText);
+
+                if (receiveMessageData.eventName == "User")
+                {
+                    userText.text += receiveMessageData.eventName + " : " + receiveMessageData.data + "\n";
+                    severText.text += "\n";
+                }
+                else if(receiveMessageData.eventName == "Sever")
+                {
+                    severText.text += receiveMessageData.eventName + " : " + receiveMessageData.data + "\n";
+                    userText.text += "\n";
+                }
+
+                else if(receiveMessageData.eventName == "CreateRoom" && receiveMessageData.data == "Success")
+                {
+                    panelLobby.SetActive(false);
+
+
+                }
+                else if(receiveMessageData.eventName == "CreateRoom" && receiveMessageData.data == "Fail")
+                {
+                    panelCreatFail.SetActive(true);
+                }
+                else if (receiveMessageData.eventName == "JoinRoom" && receiveMessageData.data == "Fail")
+                {
+                    panelCreatFail.SetActive(true);
+                }
+                else if (receiveMessageData.eventName == "JoinRoom" && receiveMessageData.data == "Success")
+                {
+                    panelLobby.SetActive(false);
+                }
+                else if (receiveMessageData.eventName == "LeaveRoom")
+                {
+                    Debug.Log("Leave Room Success");
+                    panelLobby.SetActive(true);
+                }
+
+
+
+
+                saveDataText = "";
+            }
+
+
 
         }
+
+
+
+        
 
         public void OnDestroy()
         {
@@ -58,31 +142,32 @@ namespace ProgramChatW2
 
         public void ClickSend()
         {
-            websocket.Send(userText.text = massageText.text);
-            y = 160;
+            
+            if (massageText.text == "" || websocket.ReadyState != WebSocketState.Open)                     
+                return;
+                          
 
-            for (var j = 0; j < saveMessage.Count; j++)
-            {
-                saveMessage[j].transform.position= new Vector3(520, y+=15, 0);
-
-            }
-            var i = Instantiate(createText, new Vector3(520, 160, 0), Quaternion.identity, parent.transform);
-            i.GetComponent<Text>().text = userText.text;
-            saveMessage.Add(i);
-            Debug.Log(saveMessage.Count);
-
+            SocketEvent socketEvent = new SocketEvent("User", massageText.text);
             
 
+            string toJsonStr = JsonUtility.ToJson(socketEvent);
+            
+
+            //saveDataText = massageText.text;
+
+            websocket.Send(toJsonStr);
+            Debug.Log(toJsonStr);
+            massageText.text = "";
+
+            
 
         }
         public void OnMessage(object sender,MessageEventArgs messageEventArgs)
         {
             Debug.Log("Message from sever : " + messageEventArgs.Data);
-            severText.text = messageEventArgs.Data;
-          
 
-           
-            
+            saveDataText = messageEventArgs.Data;
+
 
         }
 
@@ -90,8 +175,20 @@ namespace ProgramChatW2
         {
             if (ipCom.text == "127.0.0.1" && portCom.text == "25500")
             {
+                websocket = new WebSocket("ws://127.0.0.1:25500/");
+
+                websocket.OnMessage += OnMessage;
+
+                websocket.Connect();
+
                 main1.SetActive(false);
+
+
                 Debug.Log("Connected Complete...");
+
+                
+
+                
             }
             else
             {
@@ -99,6 +196,77 @@ namespace ProgramChatW2
                 checkWrong.text = "IP or Port is wrong!! Please try again";
             }
         }
+
+        public void CreateRoom()
+        {
+            if (string.IsNullOrEmpty(createRoom.text) == false)
+            {
+                SocketEvent socketEvent = new SocketEvent("CreateRoom", createRoom.text);
+
+                string toJsonstr = JsonUtility.ToJson(socketEvent);
+
+                websocket.Send(toJsonstr);
+
+                createRoom.text = "";
+            }
+        }
+
+        public void JoinRoom()
+        {
+            if(string.IsNullOrEmpty(joinRoom.text)== false)
+            {
+                SocketEvent socketEvent = new SocketEvent("JoinRoom", joinRoom.text);
+
+                string toJsonstr = JsonUtility.ToJson(socketEvent);
+
+                websocket.Send(toJsonstr);
+
+                joinRoom.text = "";
+            }
+        }
+
+        public void LeaveRoom()
+        {
+            SocketEvent socketEvent = new SocketEvent("LeaveRoom", "");
+
+            string toJsonstr = JsonUtility.ToJson(socketEvent);
+
+            websocket.Send(toJsonstr);
+        }
+
+        public void FailCreateRoom()
+        {
+            panelCreatFail.SetActive(false);
+        }
+
+        public void FailJoinRoom()
+        {
+            panelJoinFail.SetActive(false);
+        }
+
+        //IEnumerator CreateAndLeave()
+        //{
+            
+
+            
+
+            //socketEvent.eventName = "LeaveRoom";
+            //socketEvent.roomName = "";
+
+            //toJsonstr = JsonUtility.ToJson(socketEvent);
+
+            //websocket.Send(toJsonstr);
+        //}
+
+    
+
+        //public void CreateRoom(string roomName)
+        //{
+        //    if(websocket.ReadyState == WebSocketState.Open)
+        //    {
+        //        websocket.Send("CreateRoom"+roomName);
+        //    }
+        //}
     }
 }
 
