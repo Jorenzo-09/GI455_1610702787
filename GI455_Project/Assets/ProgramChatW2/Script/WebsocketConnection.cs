@@ -48,6 +48,7 @@ namespace ProgramChatW2
         
 
         string saveDataText;
+        string lastMessageMeSend;
 
         public GameObject panelCreatFail;
         public GameObject panelJoinFail;
@@ -85,28 +86,29 @@ namespace ProgramChatW2
 
                 if (receiveMessageData.eventName == "User")
                 {
-                    userText.text += receiveMessageData.eventName + " : " + receiveMessageData.data + "\n";
-                    severText.text += "\n";
+                    if (receiveMessageData.data == lastMessageMeSend)
+                    {
+                        userText.text += receiveMessageData.eventName + " : " + receiveMessageData.data + "\n";
+                        severText.text += "\n";
+                    }
+                    else
+                    {
+                        severText.text += receiveMessageData.eventName + " : " + receiveMessageData.data + "\n";
+                        userText.text += "\n";
+                    }
                 }
-                else if(receiveMessageData.eventName == "Sever")
-                {
-                    severText.text += receiveMessageData.eventName + " : " + receiveMessageData.data + "\n";
-                    userText.text += "\n";
-                }
-
-                else if(receiveMessageData.eventName == "CreateRoom" && receiveMessageData.data == "Success")
+                else if (receiveMessageData.eventName == "CreateRoom" && receiveMessageData.data == "Success")
                 {
                     panelLobby.SetActive(false);
 
-
                 }
-                else if(receiveMessageData.eventName == "CreateRoom" && receiveMessageData.data == "Fail")
+                else if (receiveMessageData.eventName == "CreateRoom" && receiveMessageData.data == "Fail")
                 {
                     panelCreatFail.SetActive(true);
                 }
                 else if (receiveMessageData.eventName == "JoinRoom" && receiveMessageData.data == "Fail")
                 {
-                    panelCreatFail.SetActive(true);
+                    panelJoinFail.SetActive(true);
                 }
                 else if (receiveMessageData.eventName == "JoinRoom" && receiveMessageData.data == "Success")
                 {
@@ -118,19 +120,10 @@ namespace ProgramChatW2
                     panelLobby.SetActive(true);
                 }
 
-
-
-
                 saveDataText = "";
             }
 
-
-
         }
-
-
-
-        
 
         public void OnDestroy()
         {
@@ -157,9 +150,8 @@ namespace ProgramChatW2
 
             websocket.Send(toJsonStr);
             Debug.Log(toJsonStr);
+            lastMessageMeSend = massageText.text;
             massageText.text = "";
-
-            
 
         }
         public void OnMessage(object sender,MessageEventArgs messageEventArgs)
@@ -167,7 +159,6 @@ namespace ProgramChatW2
             Debug.Log("Message from sever : " + messageEventArgs.Data);
 
             saveDataText = messageEventArgs.Data;
-
 
         }
 
@@ -185,8 +176,6 @@ namespace ProgramChatW2
 
 
                 Debug.Log("Connected Complete...");
-
-                
 
                 
             }
@@ -244,29 +233,7 @@ namespace ProgramChatW2
             panelJoinFail.SetActive(false);
         }
 
-        //IEnumerator CreateAndLeave()
-        //{
-            
-
-            
-
-            //socketEvent.eventName = "LeaveRoom";
-            //socketEvent.roomName = "";
-
-            //toJsonstr = JsonUtility.ToJson(socketEvent);
-
-            //websocket.Send(toJsonstr);
-        //}
-
-    
-
-        //public void CreateRoom(string roomName)
-        //{
-        //    if(websocket.ReadyState == WebSocketState.Open)
-        //    {
-        //        websocket.Send("CreateRoom"+roomName);
-        //    }
-        //}
+        
     }
 }
 

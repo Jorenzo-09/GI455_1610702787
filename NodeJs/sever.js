@@ -80,6 +80,20 @@ websocketSever.on("connection",(ws)=>{
             //    console.log(roomList[i].roomName)
             //}
         }
+
+        else if(toJsonObj.eventName == "User")//Message
+        {
+            var resultJson =
+                {
+                    eventName: "User",
+                    data: toJsonObj.data
+                }
+                var strResult = JSON.stringify(resultJson)
+                ws.send(strResult)
+
+            Boardcast(data)
+
+        }
            
         else if(toJsonObj.eventName == "JoinRoom")//joinRoom
         {
@@ -167,7 +181,7 @@ websocketSever.on("connection",(ws)=>{
             }
         }
             
-        //Boardcast(data)
+        
     })
         
     console.log('client connected.')
@@ -217,10 +231,12 @@ websocketSever.on("connection",(ws)=>{
 
 function Boardcast(data)
 {
-    for(var i = 0; i < wsList.length; i++)
+    for(var i = 0; i < roomList.length; i++)
     {
-        
-        wsList[i].send(data)
+        for(var j = 0; j < roomList[i].wsList.length; j++)
+        {
+            roomList[i].wsList[j].send(data)
+        }
     }
     
 }
