@@ -8,15 +8,31 @@ namespace ProgramChatW2
 {
     public class WebsocketConnection : MonoBehaviour
     {
-        struct MessageData
+
+        struct Messager
         {
             public string username;
             public string message;
 
-            public MessageData(string username, string message)
+            public Messager(string username,string message)
             {
                 this.username = username;
                 this.message = message;
+            }
+        }
+        struct DataUser
+        {
+            public string userID;
+            public string name;
+            public string password;
+            public string repassword;
+
+            public DataUser(string userID, string name,string password,string repassword)
+            {
+                this.userID = userID;
+                this.name = name;
+                this.password = password;
+                this.repassword = repassword;
             }
         }
 
@@ -45,38 +61,62 @@ namespace ProgramChatW2
 
         public InputField createRoom;
         public InputField joinRoom;
-        
 
+        // Regis
+        public InputField IDnameRegis;
+        public InputField nameRegis;
+        public InputField passwordRegis;
+        public InputField rePasswordRgis;
+
+        public Text regisFail;
+
+        // Login
+        public InputField iDNameLogin;
+        public InputField passwordLogin;
+
+        public Text loginFail;
+        
+        //
         string saveDataText;
         string lastMessageMeSend;
 
+        //Lobby
+        public Text playerNameLobby;
+
+        //Panel
         public GameObject panelCreatFail;
         public GameObject panelJoinFail;
         public GameObject panelLobby;
+        public GameObject panelRegister;
+        public GameObject panelRegisterFail;
+        public GameObject panelLogin;
+        public GameObject panelLoginFail;
 
         //public GameObject createText;
         //public GameObject createText2;
         //public GameObject parent;
 
-
+        string saveName;
         
 
         // Start is called before the first frame update
         void Start()
         {
-            
+            websocket = new WebSocket("ws://127.0.0.1:25500/");
 
-            
+            websocket.OnMessage += OnMessage;
+
+            websocket.Connect();
+
+            Debug.Log("Connected Complete...");
         }
 
         // Update is called once per frame
         void Update()
         {
             DataFormSever();
-            playerName.text = inputName.text;
+             
         }
-
-
 
         public void DataFormSever()
         {
@@ -84,16 +124,17 @@ namespace ProgramChatW2
             {
                 SocketEvent receiveMessageData = JsonUtility.FromJson<SocketEvent>(saveDataText);
 
-                if (receiveMessageData.eventName == "User")
+                if (receiveMessageData.eventName == "Msg")
                 {
-                    if (receiveMessageData.data == lastMessageMeSend)
+                    Messager _receiveMessageData1 = JsonUtility.FromJson<Messager>(receiveMessageData.data);
+                    if (_receiveMessageData1.username == saveName)
                     {
-                        userText.text += receiveMessageData.eventName + " : " + receiveMessageData.data + "\n";
+                        userText.text += _receiveMessageData1.username + " : " + _receiveMessageData1.message + "\n";
                         severText.text += "\n";
                     }
                     else
                     {
-                        severText.text += receiveMessageData.eventName + " : " + receiveMessageData.data + "\n";
+                        severText.text += _receiveMessageData1.username + " : " + _receiveMessageData1.message + "\n";
                         userText.text += "\n";
                     }
                 }
@@ -119,8 +160,34 @@ namespace ProgramChatW2
                     Debug.Log("Leave Room Success");
                     panelLobby.SetActive(true);
                 }
+                else if (receiveMessageData.eventName == "Register" && receiveMessageData.data == "Fail")
+                {                    
+                    panelRegisterFail.SetActive(true);
+                    regisFail.text = "This userID is already in the system..";
+                }
+                else if (receiveMessageData.eventName == "Register" && receiveMessageData.data == "Success")
+                {
+                    panelRegister.SetActive(false);
+                }
+                else if (receiveMessageData.eventName == "Login" )//&& receiveMessageData.data == "Fail")
+                {
+                    if(receiveMessageData.data == "Fail")
+                    {
+                        panelLoginFail.SetActive(true);
+                        loginFail.text = "ID name or Password is wrong Please Log-in again.";
+                    }
+                    else // Login Success
+                    {
+                        panelLogin.SetActive(false);
 
-                saveDataText = "";
+                        playerNameLobby.text = "User Name : "+ receiveMessageData.data;
+                        saveName = receiveMessageData.data;
+                        playerName.text = saveName;
+                    }
+                    
+                }               
+
+                    saveDataText = "";
             }
 
         }
@@ -138,11 +205,12 @@ namespace ProgramChatW2
             
             if (massageText.text == "" || websocket.ReadyState != WebSocketState.Open)                     
                 return;
-                          
+            Messager messager = new Messager(saveName, massageText.text);
 
-            SocketEvent socketEvent = new SocketEvent("User", massageText.text);
+            string toJsonStr0 = JsonUtility.ToJson(messager);
+
+            SocketEvent socketEvent = new SocketEvent("Msg", toJsonStr0);
             
-
             string toJsonStr = JsonUtility.ToJson(socketEvent);
             
 
@@ -165,19 +233,9 @@ namespace ProgramChatW2
         public void NextScene()
         {
             if (ipCom.text == "127.0.0.1" && portCom.text == "25500")
-            {
-                websocket = new WebSocket("ws://127.0.0.1:25500/");
+            {               
 
-                websocket.OnMessage += OnMessage;
-
-                websocket.Connect();
-
-                main1.SetActive(false);
-
-
-                Debug.Log("Connected Complete...");
-
-                
+                main1.SetActive(false);   
             }
             else
             {
@@ -223,6 +281,67 @@ namespace ProgramChatW2
             websocket.Send(toJsonstr);
         }
 
+        public void ClickRegister()
+        {
+            DataUser dataUser = new DataUser(IDnameRegis.text, nameRegis.text, passwordRegis.text,rePasswordRgis.text);
+
+            string dataJsonstr = JsonUtility.ToJson(dataUser);
+
+            SocketEvent socketEvent = new SocketEvent("Register",dataJsonstr);
+
+            string toJsonstr = JsonUtility.ToJson(socketEvent);
+
+            if (IDnameRegis.text == "" || nameRegis.text == "" || passwordRegis.text == "" || rePasswordRgis.text == "")
+            {
+                panelRegisterFail.SetActive(true);
+                regisFail.text = "Please Input all field.";
+            }
+            else if (passwordRegis.text != rePasswordRgis.text)
+            {
+                panelRegisterFail.SetActive(true);
+                regisFail.text = "Password not match.";
+            }
+            else
+            {
+                websocket.Send(toJsonstr);
+            }           
+        }
+
+        public void ClickLogin()
+        {
+            DataUser dataUser = new DataUser(iDNameLogin.text,"",passwordLogin.text,"");
+
+            string dataJsonstr = JsonUtility.ToJson(dataUser);
+
+            SocketEvent socketEvent = new SocketEvent("Login", dataJsonstr);
+
+            string toJsonstr = JsonUtility.ToJson(socketEvent);
+
+            if (iDNameLogin.text == "" || passwordLogin.text == "")
+            {
+                panelLoginFail.SetActive(true);
+                loginFail.text = "Please Input all field.";
+            }
+            else
+            {
+                websocket.Send(toJsonstr);
+                Debug.Log("Do it");
+            }
+            iDNameLogin.text = "";
+            passwordLogin.text = "";
+           
+        }
+
+        public void RegisterRoom()
+        {
+            panelRegister.SetActive(true);
+        }
+
+        public void RegisterFail()
+        {
+            panelRegisterFail.SetActive(false);
+        }
+
         public void FailCreateRoom()
         {
             panelCreatFail.SetActive(false);
@@ -231,6 +350,10 @@ namespace ProgramChatW2
         public void FailJoinRoom()
         {
             panelJoinFail.SetActive(false);
+        }
+        public void FailLoginFail()
+        {
+            panelLoginFail.SetActive(false);
         }
 
         

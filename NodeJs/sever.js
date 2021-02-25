@@ -1,18 +1,29 @@
 var websocket = require('ws')
 
+const sqlite3 = require('sqlite3').verbose();
+
 var websocketSever = new websocket.Server ({port : 25500}, ()=>{
     console.log("Jorenzo sever is running")
 })
 
 //var wsList = []
 var roomList = []
+
+let db = new sqlite3.Database('./database/chatDB.db', sqlite3.OPEN_CREATE | sqlite3.OPEN_READWRITE, (err)=>{
+    if(err) throw err
+
+    console.log('Connected to database. ')
+
+
+})
+
 websocketSever.on("connection",(ws)=>{
     //LobbyZone
     ws.on("message",(data)=>{
 
-        console.log(data)
-
         var toJsonObj = JSON.parse(data)
+            
+        console.log(toJsonObj)       
 
         if(toJsonObj.eventName == "CreateRoom")//CreateRoom
         {                                
@@ -79,22 +90,26 @@ websocketSever.on("connection",(ws)=>{
             //{
             //    console.log(roomList[i].roomName)
             //}
-        }
 
-        else if(toJsonObj.eventName == "User")//Message
+            // Register
+            
+        }
+        else if(toJsonObj.eventName == "Msg")//Message
         {
+
             var resultJson =
                 {
-                    eventName: "User",
+                    eventName: "Msg",
                     data: toJsonObj.data
                 }
+
+            
                 var strResult = JSON.stringify(resultJson)
                 ws.send(strResult)
 
-            Boardcast(data)
+            Boardcast(ws,data)
 
-        }
-           
+        }           
         else if(toJsonObj.eventName == "JoinRoom")//joinRoom
         {
             var isFoundRoom = false
@@ -141,7 +156,6 @@ websocketSever.on("connection",(ws)=>{
 
             console.log("client request JoinRoom")
         }
-
         else if(toJsonObj.eventName == "LeaveRoom")
         {
            var isLeaveSuccess = false
@@ -179,6 +193,91 @@ websocketSever.on("connection",(ws)=>{
 
                 console.log("Leave room fail")
             }
+        }
+        else if(toJsonObj.eventName == "Register")
+        {
+            var toJsonObjData = JSON.parse(toJsonObj.data)
+
+            var sqlInsert = "INSERT INTO UserData (UserID,Name,Password) VALUES('"+toJsonObjData.userID+"','"+toJsonObjData.name+"','"+toJsonObjData.password+"')"
+
+            db.all(sqlInsert, (err,rows)=>{
+                if(err) // Regis Fail
+                {
+                    var callbackMsg = {
+                        eventName:"Register",
+                        data:"Fail"
+                    }
+        
+                    var toJsonStr = JSON.stringify(callbackMsg)
+                    console.log("[0]" + toJsonStr)
+                    ws.send(toJsonStr)
+
+                }
+                
+                else // Regis Success
+                {
+                    var callbackMsg = {
+                        eventName:"Register",
+                        data:"Success"
+                    }
+        
+                    var toJsonStr = JSON.stringify(callbackMsg)
+                    console.log("[1]" + toJsonStr)
+                    ws.send(toJsonStr)
+                }
+            })
+        }
+        else if(toJsonObj.eventName == "Login")
+        {
+            var toJsonObjData = JSON.parse(toJsonObj.data)
+            
+            var sqlSelect = "SELECT * FROM UserData WHERE UserID = '"+toJsonObjData.userID+"' AND Password = '"+toJsonObjData.password+"'" // login
+            
+            
+
+            db.all(sqlSelect, (err,rows)=>{
+            
+            
+                if(err)
+                {
+                    console.log("[0]"+err)
+                    
+                }
+                else
+                {
+                    if(rows.length > 0)
+                    {
+                        
+                        console.log("--------1-------")
+                        console.log(rows)
+                        console.log("--------1-------")
+
+                        
+                        var callbackMsg = {
+                            eventName:"Login",
+                            data:rows[0].Name
+                        }
+        
+                        var toJsonStr = JSON.stringify(callbackMsg)
+                        ws.send(toJsonStr)                        
+        
+                    }
+                    else
+                    {
+                        var callbackMsg = {
+                            eventName:"Login",
+                            data:"Fail"
+                        }
+        
+                        var toJsonStr = JSON.stringify(callbackMsg)                                               
+                        
+                        ws.send(toJsonStr)
+                    }
+        
+                    
+                }
+                
+            })
         }
             
         
@@ -229,14 +328,25 @@ websocketSever.on("connection",(ws)=>{
     })
 }*/
 
-function Boardcast(data)
+function Boardcast(ws,data)
 {
+    var roomNumber = -1;
+
     for(var i = 0; i < roomList.length; i++)
     {
         for(var j = 0; j < roomList[i].wsList.length; j++)
         {
-            roomList[i].wsList[j].send(data)
+            if(roomList[i].wsList[j] == ws)
+            {
+                roomNumber = i;
+                break;
+            }
         }
+    }
+
+    for(var i = 0;i<roomList[roomNumber].wsList.length; i++)
+    {
+        roomList[roomNumber].wsList[i].send(data)
     }
     
 }
