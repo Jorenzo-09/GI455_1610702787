@@ -159,6 +159,10 @@ namespace ProgramChatW2
                 {
                     Debug.Log("Leave Room Success");
                     panelLobby.SetActive(true);
+
+                    userText.text = "";
+                    severText.text = "";
+
                 }
                 else if (receiveMessageData.eventName == "Register" && receiveMessageData.data == "Fail")
                 {                    
